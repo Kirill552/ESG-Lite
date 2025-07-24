@@ -141,3 +141,6 @@ YANDEX_CLOUD_НАСТРОЙКА.md
 authorized_key.json
 TESTING_GUIDE.md
 .kiro/
+
+# clerk configuration (can include secrets)
+/.clerk/
