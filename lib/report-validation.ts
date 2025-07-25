@@ -57,11 +57,13 @@ export function validateReportData(data: any): ReportValidationError[] {
   // Специфичная валидация для разных типов отчетов
   switch (data.reportType) {
     case ReportType.REPORT_296FZ:
-      errors.push(...validate296FZReport(data.emissionData));
+    case 'EMISSION_296FZ': // Совместимость с новым API
+      errors.push(...validate296FZReport(data.emissionData || data.companyData));
       break;
     case ReportType.CBAM_XML:
     case ReportType.CBAM_CSV:
-      errors.push(...validateCBAMReport(data.emissionData));
+    case 'CBAM_QUARTERLY': // Совместимость с новым API
+      errors.push(...validateCBAMReport(data.emissionData || data.goodsData));
       break;
   }
 
