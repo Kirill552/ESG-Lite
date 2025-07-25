@@ -20,11 +20,38 @@ function replaceTokens(template, data) {
   return result;
 }
 
+// Функция расчета итогов CBAM
+function calculateCBAMTotals(lines) {
+  const totalDirect = lines.reduce((sum, line) => {
+    const direct = parseFloat(line.l_dir) || 0;
+    const qty = parseFloat(line.l_qty) || 0;
+    return sum + (direct * qty);
+  }, 0);
+  
+  const totalIndirect = lines.reduce((sum, line) => {
+    const elMwh = parseFloat(line.l_el_mwh) || 0;
+    const elEf = parseFloat(line.l_el_ef) || 0;
+    const qty = parseFloat(line.l_qty) || 0;
+    return sum + (elMwh * elEf * qty);
+  }, 0);
+  
+  const totalQuantity = lines.reduce((sum, line) => {
+    return sum + (parseFloat(line.l_qty) || 0);
+  }, 0);
+  
+  return {
+    totalQuantity: totalQuantity.toFixed(1),
+    totalDirect: totalDirect.toFixed(1),
+    totalIndirect: totalIndirect.toFixed(1),
+    totalAll: (totalDirect + totalIndirect).toFixed(1)
+  };
+}
+
 // Создание тестовых данных для CBAM 2025
 function createCBAMTemplateData(baseData) {
   const now = new Date();
   
-  return {
+  const templateData = {
     // 1. Declarant block
     eori: baseData.eori || 'RU123456789012345',
     cbam_id: baseData.cbamId || 'DL-2025-000123',
@@ -48,7 +75,7 @@ function createCBAMTemplateData(baseData) {
     l1_dir: '2.515',
     l1_el_mwh: '0.65',
     l1_el_ef: '0.322',
-    l1_ef_meth: 'M',
+    l1_ef_meth: 'RM',
     l1_steel_id: 'MMK-001',
     l1_ip_in_qty: '120.0',
     l1_ip_in_co2: '180.5',
@@ -68,7 +95,7 @@ function createCBAMTemplateData(baseData) {
     l2_dir: '2.496',
     l2_el_mwh: '0.68',
     l2_el_ef: '0.322',
-    l2_ef_meth: 'M',
+    l2_ef_meth: 'RM',
     l2_steel_id: 'MMK-002',
     l2_ip_in_qty: '60.0',
     l2_ip_in_co2: '90.2',
@@ -95,12 +122,6 @@ function createCBAMTemplateData(baseData) {
     l3_ip_out_qty: '',
     l3_ip_out_co2: '',
     
-    // Totals (calculated)
-    total_quantity: '150.0',
-    total_direct_emissions: '376.3',
-    total_indirect_emissions: '42.9',
-    total_emissions: '376.3',
-    
     // 3. Signer block
     signer_name: baseData.signerName || 'Петров Петр Петрович',
     signer_pos: baseData.signerPosition || 'Export Manager',
@@ -111,6 +132,26 @@ function createCBAMTemplateData(baseData) {
     generation_time: now.toLocaleTimeString('ru-RU'),
     document_id: `CBAM_${Date.now()}`
   };
+  
+  // Рассчитываем итоги вручную для простоты
+  const line1Direct = parseFloat(templateData.l1_qty) * parseFloat(templateData.l1_dir);
+  const line2Direct = parseFloat(templateData.l2_qty) * parseFloat(templateData.l2_dir);
+  const totalDirect = line1Direct + line2Direct;
+  
+  const line1Indirect = parseFloat(templateData.l1_qty) * parseFloat(templateData.l1_el_mwh) * parseFloat(templateData.l1_el_ef);
+  const line2Indirect = parseFloat(templateData.l2_qty) * parseFloat(templateData.l2_el_mwh) * parseFloat(templateData.l2_el_ef);
+  const totalIndirect = line1Indirect + line2Indirect;
+  
+  const totalQuantity = parseFloat(templateData.l1_qty) + parseFloat(templateData.l2_qty);
+  const totalEmissions = totalDirect + totalIndirect;
+  
+  // Добавляем рассчитанные итоги
+  templateData.total_quantity = totalQuantity.toFixed(1);
+  templateData.total_direct_emissions = totalDirect.toFixed(1);
+  templateData.total_indirect_emissions = totalIndirect.toFixed(1);
+  templateData.total_emissions = totalEmissions.toFixed(1);
+  
+  return templateData;
 }
 
 // Валидация CBAM данных
@@ -207,15 +248,21 @@ try {
     validationErrors.forEach(error => console.log(`  - ${error}`));
   }
   
-  // Проверка суммы выбросов
-  const line1Emissions = parseFloat(templateData.l1_ip_out_co2) || 0;
-  const line2Emissions = parseFloat(templateData.l2_ip_out_co2) || 0;
-  const calculatedTotal = line1Emissions + line2Emissions;
+  // Проверка суммы выбросов (используем правильную формулу)
+  const line1Direct = parseFloat(templateData.l1_qty) * parseFloat(templateData.l1_dir);
+  const line2Direct = parseFloat(templateData.l2_qty) * parseFloat(templateData.l2_dir);
+  const calculatedDirect = line1Direct + line2Direct;
+  
+  const line1Indirect = parseFloat(templateData.l1_qty) * parseFloat(templateData.l1_el_mwh) * parseFloat(templateData.l1_el_ef);
+  const line2Indirect = parseFloat(templateData.l2_qty) * parseFloat(templateData.l2_el_mwh) * parseFloat(templateData.l2_el_ef);
+  const calculatedIndirect = line1Indirect + line2Indirect;
+  
+  const calculatedTotal = calculatedDirect + calculatedIndirect;
   const reportedTotal = parseFloat(templateData.total_emissions);
   const difference = Math.abs(calculatedTotal - reportedTotal);
   
   if (difference < 0.1) {
-    console.log(`✅ Сумма выбросов корректна: ${calculatedTotal.toFixed(1)} = ${reportedTotal.toFixed(1)} т CO₂-экв`);
+    console.log(`✅ Сумма выбросов корректна: ${calculatedDirect.toFixed(1)} + ${calculatedIndirect.toFixed(1)} = ${reportedTotal.toFixed(1)} т CO₂-экв`);
   } else {
     console.log(`❌ Ошибка в сумме выбросов: рассчитано ${calculatedTotal.toFixed(1)}, указано ${reportedTotal.toFixed(1)}`);
   }
