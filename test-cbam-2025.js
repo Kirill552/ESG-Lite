@@ -17,6 +17,21 @@ function replaceTokens(template, data) {
     return value !== undefined ? String(value) : '';
   });
   
+  // Специальная обработка стилей отображения
+  if (data.l3_display_style) {
+    result = result.replace(
+      '<tr id="line3-row" style="display: none;">',
+      `<tr id="line3-row" style="display: ${data.l3_display_style};">`
+    );
+  }
+  
+  if (data.no_goods_display_style) {
+    result = result.replace(
+      '<div class="no-goods" id="no-cbam-goods" style="display: none;">',
+      `<div class="no-goods" id="no-cbam-goods" style="display: ${data.no_goods_display_style};">`
+    );
+  }
+  
   return result;
 }
 
@@ -150,6 +165,15 @@ function createCBAMTemplateData(baseData) {
   templateData.total_direct_emissions = totalDirect.toFixed(1);
   templateData.total_indirect_emissions = totalIndirect.toFixed(1);
   templateData.total_emissions = totalEmissions.toFixed(1);
+  
+  // Контролируем отображение Line 3 через замену стиля
+  templateData.l3_display_style = templateData.l3_cn && templateData.l3_cn.length > 0 ? 'table-row' : 'none';
+  
+  // Контролируем отображение блока "no goods" (показываем только если нет товаров)
+  const hasGoods = (templateData.l1_cn && templateData.l1_cn.length > 0) || 
+                   (templateData.l2_cn && templateData.l2_cn.length > 0) || 
+                   (templateData.l3_cn && templateData.l3_cn.length > 0);
+  templateData.no_goods_display_style = hasGoods ? 'none' : 'block';
   
   return templateData;
 }
