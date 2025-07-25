@@ -172,7 +172,7 @@ export function Footer() {
 
             <div className="text-center">
               <p className="text-sm text-slate-400">
-                Резидент Сколково #R2024/ESG/001
+                 #R2024/ESG/001
               </p>
             </div>
 

@@ -128,8 +128,15 @@ reports/
 .vscode/settings.json
 .idea/
 
- Kiro IDE files (если нужно скрыть)
- .kiro/
+# Kiro IDE files (если нужно скрыть)
+# .kiro/
+
+# Test files (не используем в этом проекте)
+**/__tests__/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
 
 SETUP_BACKEND.md
 SETUP_FONTS.md

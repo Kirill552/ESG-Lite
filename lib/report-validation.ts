@@ -82,14 +82,20 @@ function validate296FZReport(emissionData: any): ReportValidationError[] {
     return errors;
   }
 
-  // Проверка обязательных полей для 296-ФЗ
-  const requiredFields = ['companyName', 'inn', 'reportingPeriod'];
+  // Проверка обязательных полей для 296-ФЗ (новый формат)
+  const requiredFields = [
+    { field: 'companyName', token: 'org_name' },
+    { field: 'inn', token: 'inn' },
+    { field: 'reportingPeriod', token: 'reporting_period' },
+    { field: 'ogrn', token: 'ogrn' },
+    { field: 'address', token: 'address' }
+  ];
   
-  for (const field of requiredFields) {
+  for (const { field, token } of requiredFields) {
     if (!emissionData[field]) {
       errors.push({
         field: `emissionData.${field}`,
-        message: `Поле ${field} обязательно для отчета 296-ФЗ`
+        message: `Поле ${field} (токен [[${token}]]) обязательно для отчета 296-ФЗ`
       });
     }
   }
@@ -102,6 +108,14 @@ function validate296FZReport(emissionData: any): ReportValidationError[] {
     });
   }
 
+  // Валидация ОГРН
+  if (emissionData.ogrn && !isValidOGRN(emissionData.ogrn)) {
+    errors.push({
+      field: 'emissionData.ogrn',
+      message: 'Некорректный формат ОГРН'
+    });
+  }
+
   // Валидация отчетного периода
   if (emissionData.reportingPeriod) {
     const year = parseInt(emissionData.reportingPeriod);
@@ -110,6 +124,17 @@ function validate296FZReport(emissionData: any): ReportValidationError[] {
       errors.push({
         field: 'emissionData.reportingPeriod',
         message: `Отчетный период должен быть между 2021 и ${currentYear}`
+      });
+    }
+  }
+
+  // Валидация данных о выбросах
+  if (emissionData.totalEmissions) {
+    const total = parseFloat(emissionData.totalEmissions);
+    if (isNaN(total) || total < 0) {
+      errors.push({
+        field: 'emissionData.totalEmissions',
+        message: 'Общий объем выбросов должен быть положительным числом'
       });
     }
   }
@@ -170,6 +195,16 @@ function isValidINN(inn: string): boolean {
   
   const cleanINN = inn.replace(/\D/g, '');
   return cleanINN.length === 10 || cleanINN.length === 12;
+}
+
+/**
+ * Проверяет валидность ОГРН
+ */
+function isValidOGRN(ogrn: string): boolean {
+  if (typeof ogrn !== 'string') return false;
+  
+  const cleanOGRN = ogrn.replace(/\D/g, '');
+  return cleanOGRN.length === 13 || cleanOGRN.length === 15;
 }
 
 /**

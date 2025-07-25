@@ -1,301 +1,158 @@
-// ESG-Lite Emission Calculator
-// Based on Russian Federation 296-FZ Law and latest 2025 emission factors
+/**
+ * Калькулятор выбросов парниковых газов для отчета 296-ФЗ
+ */
 
-export interface EmissionFactors {
-  electricity: number; // кг CO2/кВт·ч
-  naturalGas: number; // кг CO2/тыс. м³  
-  diesel: number; // кг CO2/л
-  gasoline: number; // кг CO2/л
-  coal: number; // кг CO2/кг
-  heatEnergy: number; // кг CO2/Гкал
-}
-
-// Актуальные коэффициенты эмиссии для России на 2025 год
-// Источник: Приказ Минприроды России, 296-ФЗ, методические рекомендации 2025
-export const EMISSION_FACTORS_2025: EmissionFactors = {
-  // Электроэнергия (средний фактор по России с учетом структуры генерации)
-  electricity: 0.4554, // кг CO2/кВт·ч (обновлено на 2025 год)
-  
-  // Природный газ (с учетом теплотворной способности)
-  naturalGas: 1850, // кг CO2/тыс. м³
-  
-  // Дизельное топливо
-  diesel: 2.68, // кг CO2/л
-  
-  // Автомобильный бензин  
-  gasoline: 2.31, // кг CO2/л
-  
-  // Каменный уголь (средний показатель)
-  coal: 2.33, // кг CO2/кг
-  
-  // Тепловая энергия (централизованное теплоснабжение)
-  heatEnergy: 164.2 // кг CO2/Гкал
+// Потенциалы глобального потепления (GWP) по IPCC AR4
+export const GWP_VALUES = {
+  CO2: 1,
+  CH4: 25,
+  N2O: 298,
+  HFC: 1430, // средний для HFC
+  PFC: 7390, // средний для PFC
+  SF6: 22800
 };
 
-export interface EsgMetrics {
-  // Энергопотребление
-  electricityConsumption?: number; // кВт·ч
-  naturalGasConsumption?: number; // тыс. м³
-  heatConsumption?: number; // Гкал
-  
-  // Транспорт  
-  dieselConsumption?: number; // литры
-  gasolineConsumption?: number; // литры
-  
-  // Производство
-  coalConsumption?: number; // кг
-  
-  // Отходы
-  wasteGenerated?: number; // тонны
-  
-  // Вода
-  waterConsumption?: number; // м³
+export interface EmissionData {
+  co2_mass: number;
+  ch4_mass: number;
+  n2o_mass: number;
+  hfc_mass: number;
+  pfc_mass: number;
+  sf6_mass: number;
 }
 
 export interface EmissionResult {
-  totalEmissions: number; // тонны CO2-экв
-  breakdown: {
-    electricity: number;
-    naturalGas: number;
-    transport: number;
-    heating: number;
-    coal: number;
-    waste: number;
+  co2_mass: string;
+  co2e_co2: string;
+  co2_percent: string;
+  
+  ch4_mass: string;
+  co2e_ch4: string;
+  ch4_percent: string;
+  
+  n2o_mass: string;
+  co2e_n2o: string;
+  n2o_percent: string;
+  
+  hfc_mass: string;
+  hfc_gwp: string;
+  co2e_hfc: string;
+  hfc_percent: string;
+  
+  pfc_mass: string;
+  pfc_gwp: string;
+  co2e_pfc: string;
+  pfc_percent: string;
+  
+  sf6_mass: string;
+  co2e_sf6: string;
+  sf6_percent: string;
+  
+  total_co2e: string;
+}
+
+/**
+ * Рассчитывает выбросы CO₂-эквивалента и проценты
+ */
+export function calculateEmissions(data: EmissionData): EmissionResult {
+  // Расчет CO₂-эквивалента для каждого газа
+  const co2e_co2 = data.co2_mass * GWP_VALUES.CO2;
+  const co2e_ch4 = data.ch4_mass * GWP_VALUES.CH4;
+  const co2e_n2o = data.n2o_mass * GWP_VALUES.N2O;
+  const co2e_hfc = data.hfc_mass * GWP_VALUES.HFC;
+  const co2e_pfc = data.pfc_mass * GWP_VALUES.PFC;
+  const co2e_sf6 = data.sf6_mass * GWP_VALUES.SF6;
+  
+  // Общий объем выбросов
+  const total = co2e_co2 + co2e_ch4 + co2e_n2o + co2e_hfc + co2e_pfc + co2e_sf6;
+  
+  // Расчет процентов
+  const co2_percent = total > 0 ? (co2e_co2 / total) * 100 : 0;
+  const ch4_percent = total > 0 ? (co2e_ch4 / total) * 100 : 0;
+  const n2o_percent = total > 0 ? (co2e_n2o / total) * 100 : 0;
+  const hfc_percent = total > 0 ? (co2e_hfc / total) * 100 : 0;
+  const pfc_percent = total > 0 ? (co2e_pfc / total) * 100 : 0;
+  const sf6_percent = total > 0 ? (co2e_sf6 / total) * 100 : 0;
+  
+  return {
+    co2_mass: formatNumber(data.co2_mass),
+    co2e_co2: formatNumber(co2e_co2),
+    co2_percent: formatPercent(co2_percent),
+    
+    ch4_mass: formatNumber(data.ch4_mass),
+    co2e_ch4: formatNumber(co2e_ch4),
+    ch4_percent: formatPercent(ch4_percent),
+    
+    n2o_mass: formatNumber(data.n2o_mass),
+    co2e_n2o: formatNumber(co2e_n2o),
+    n2o_percent: formatPercent(n2o_percent),
+    
+    hfc_mass: formatNumber(data.hfc_mass),
+    hfc_gwp: GWP_VALUES.HFC.toString(),
+    co2e_hfc: formatNumber(co2e_hfc),
+    hfc_percent: formatPercent(hfc_percent),
+    
+    pfc_mass: formatNumber(data.pfc_mass),
+    pfc_gwp: GWP_VALUES.PFC.toString(),
+    co2e_pfc: formatNumber(co2e_pfc),
+    pfc_percent: formatPercent(pfc_percent),
+    
+    sf6_mass: formatNumber(data.sf6_mass),
+    co2e_sf6: formatNumber(co2e_sf6),
+    sf6_percent: formatPercent(sf6_percent),
+    
+    total_co2e: formatNumber(total)
   };
+}
+
+/**
+ * Форматирует число для отображения в отчете (русский формат)
+ */
+function formatNumber(value: number): string {
+  if (value === 0) return '0,0';
+  if (value < 0.001) return '< 0,001';
   
-  // Дополнительные метрики
-  intensity: {
-    perRevenue?: number; // кг CO2/тыс. руб.
-    perEmployee?: number; // кг CO2/чел.
-    perUnit?: number; // кг CO2/ед. продукции
+  return value.toFixed(1).replace('.', ',');
+}
+
+/**
+ * Форматирует процент для отображения в отчете
+ */
+function formatPercent(value: number): string {
+  if (value === 0) return '0,0';
+  if (value < 0.1) return '< 0,1';
+  
+  return value.toFixed(1).replace('.', ',');
+}
+
+/**
+ * Создает тестовые данные выбросов на основе типа деятельности
+ */
+export function generateEmissionData(baseData: any): EmissionData {
+  const okved = baseData.okved || baseData.okvedName || '';
+  
+  // Базовые выбросы для офисной деятельности
+  let co2_base = 800; // тонн CO2 в год
+  let ch4_base = 0.5;
+  let n2o_base = 0.3;
+  
+  // Корректировка в зависимости от типа деятельности
+  if (okved.includes('23.') || okved.includes('производство')) {
+    co2_base *= 2.5; // Производство - больше выбросов
+    ch4_base *= 3;
+    n2o_base *= 2;
+  } else if (okved.includes('49.') || okved.includes('транспорт')) {
+    co2_base *= 1.8; // Транспорт - средние выбросы
+    ch4_base *= 2;
+    n2o_base *= 4; // N2O от транспорта
+  }
+  
+  return {
+    co2_mass: co2_base,
+    ch4_mass: ch4_base,
+    n2o_mass: n2o_base,
+    hfc_mass: 0, // Обычно 0 для большинства организаций
+    pfc_mass: 0,
+    sf6_mass: 0.001 // Минимальные выбросы SF6
   };
-  
-  // Классификация по уровням (Scope)
-  scope1: number; // Прямые выбросы
-  scope2: number; // Косвенные выбросы (электричество, тепло)
-  scope3?: number; // Прочие косвенные выбросы
 }
-
-export class EmissionCalculator {
-  private factors: EmissionFactors;
-  
-  constructor(customFactors?: Partial<EmissionFactors>) {
-    this.factors = { ...EMISSION_FACTORS_2025, ...customFactors };
-  }
-  
-  /**
-   * Основной метод расчета выбросов парниковых газов
-   */
-  calculateEmissions(metrics: EsgMetrics): EmissionResult {
-    const breakdown = {
-      electricity: this.calculateElectricityEmissions(metrics.electricityConsumption || 0),
-      naturalGas: this.calculateGasEmissions(metrics.naturalGasConsumption || 0),
-      transport: this.calculateTransportEmissions(
-        metrics.dieselConsumption || 0,
-        metrics.gasolineConsumption || 0
-      ),
-      heating: this.calculateHeatingEmissions(metrics.heatConsumption || 0),
-      coal: this.calculateCoalEmissions(metrics.coalConsumption || 0),
-      waste: this.calculateWasteEmissions(metrics.wasteGenerated || 0)
-    };
-    
-    const totalEmissions = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
-    
-    // Классификация по Scope согласно международным стандартам
-    const scope1 = breakdown.naturalGas + breakdown.transport + breakdown.coal;
-    const scope2 = breakdown.electricity + breakdown.heating;
-    const scope3 = breakdown.waste; // Упрощенная классификация
-    
-    return {
-      totalEmissions: totalEmissions / 1000, // Конвертация в тонны
-      breakdown,
-      intensity: {},
-      scope1: scope1 / 1000,
-      scope2: scope2 / 1000,
-      scope3: scope3 / 1000
-    };
-  }
-  
-  private calculateElectricityEmissions(consumption: number): number {
-    return consumption * this.factors.electricity;
-  }
-  
-  private calculateGasEmissions(consumption: number): number {
-    return consumption * this.factors.naturalGas;
-  }
-  
-  private calculateTransportEmissions(diesel: number, gasoline: number): number {
-    return (diesel * this.factors.diesel) + (gasoline * this.factors.gasoline);
-  }
-  
-  private calculateHeatingEmissions(consumption: number): number {
-    return consumption * this.factors.heatEnergy;
-  }
-  
-  private calculateCoalEmissions(consumption: number): number {
-    return (consumption / 1000) * this.factors.coal * 1000; // Конвертация кг в тонны
-  }
-  
-  private calculateWasteEmissions(waste: number): number {
-    // Упрощенный расчет: 0,5 тонны CO2 на тонну отходов
-    return waste * 500;
-  }
-  
-  /**
-   * Извлечение ESG-метрик из текста OCR
-   */
-  extractMetricsFromText(ocrText: string): EsgMetrics {
-    const metrics: EsgMetrics = {};
-    
-    // Регулярные выражения для поиска метрик
-    const patterns = {
-      electricity: /(?:электроэнергия|электричество|кВт[·\s]*ч|kwh)[:\s]*([0-9,.\s]+)/gi,
-      naturalGas: /(?:газ|м3|куб)[:\s]*([0-9,.\s]+)/gi,
-      diesel: /(?:дизель|дизтопливо|солярка)[:\s]*([0-9,.\s]+)/gi,
-      gasoline: /(?:бензин|аи-92|аи-95)[:\s]*([0-9,.\s]+)/gi,
-      heat: /(?:тепло|гкал|отопление)[:\s]*([0-9,.\s]+)/gi,
-      waste: /(?:отходы|мусор|тонн)[:\s]*([0-9,.\s]+)/gi,
-      water: /(?:вода|водопотребление|м3)[:\s]*([0-9,.\s]+)/gi
-    };
-    
-    // Извлечение значений
-    Object.entries(patterns).forEach(([key, regex]) => {
-      const matches = Array.from(ocrText.matchAll(regex));
-      if (matches.length > 0) {
-        const value = this.parseNumber(matches[0][1]);
-        switch (key) {
-          case 'electricity':
-            metrics.electricityConsumption = value;
-            break;
-          case 'naturalGas':
-            metrics.naturalGasConsumption = value / 1000; // Конвертация в тыс. м³
-            break;
-          case 'diesel':
-            metrics.dieselConsumption = value;
-            break;
-          case 'gasoline':
-            metrics.gasolineConsumption = value;
-            break;
-          case 'heat':
-            metrics.heatConsumption = value;
-            break;
-          case 'waste':
-            metrics.wasteGenerated = value;
-            break;
-          case 'water':
-            metrics.waterConsumption = value;
-            break;
-        }
-      }
-    });
-    
-    return metrics;
-  }
-  
-  private parseNumber(text: string): number {
-    // Удаляем пробелы и заменяем запятые на точки
-    const cleaned = text.replace(/[\s,]/g, '').replace(',', '.');
-    return parseFloat(cleaned) || 0;
-  }
-  
-  /**
-   * Генерация отчета в соответствии с 296-ФЗ
-   */
-  generateReport(metrics: EsgMetrics, organizationInfo?: any): string {
-    const result = this.calculateEmissions(metrics);
-    const date = new Date().toLocaleDateString('ru-RU');
-    
-    return `
-ОТЧЕТ О ВЫБРОСАХ ПАРНИКОВЫХ ГАЗОВ
-В соответствии с Федеральным законом № 296-ФЗ от 02.07.2021
-
-Дата составления: ${date}
-Отчетный период: ${new Date().getFullYear()} год
-
-ОБЩИЕ ПОКАЗАТЕЛИ:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Общий объем выбросов: ${result.totalEmissions.toFixed(2)} тонн CO₂-экв
-
-ДЕТАЛИЗАЦИЯ ПО ИСТОЧНИКАМ:
-• Электроэнергия: ${(result.breakdown.electricity/1000).toFixed(2)} т CO₂-экв
-• Природный газ: ${(result.breakdown.naturalGas/1000).toFixed(2)} т CO₂-экв  
-• Транспорт: ${(result.breakdown.transport/1000).toFixed(2)} т CO₂-экв
-• Теплоснабжение: ${(result.breakdown.heating/1000).toFixed(2)} т CO₂-экв
-• Уголь: ${(result.breakdown.coal/1000).toFixed(2)} т CO₂-экв
-• Отходы: ${(result.breakdown.waste/1000).toFixed(2)} т CO₂-экв
-
-КЛАССИФИКАЦИЯ ПО УРОВНЯМ (SCOPE):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Scope 1 (прямые выбросы): ${result.scope1.toFixed(2)} т CO₂-экв
-Scope 2 (косвенные - энергия): ${result.scope2.toFixed(2)} т CO₂-экв
-Scope 3 (прочие косвенные): ${(result.scope3 || 0).toFixed(2)} т CO₂-экв
-
-ИСПОЛЬЗОВАННЫЕ КОЭФФИЦИЕНТЫ ЭМИССИИ (2025 г.):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-• Электроэнергия: ${this.factors.electricity} кг CO₂/кВт·ч
-• Природный газ: ${this.factors.naturalGas} кг CO₂/тыс. м³
-• Дизельное топливо: ${this.factors.diesel} кг CO₂/л
-• Автомобильный бензин: ${this.factors.gasoline} кг CO₂/л
-• Тепловая энергия: ${this.factors.heatEnergy} кг CO₂/Гкал
-
-Отчет сформирован системой ESG-Lite MVP
-Версия методологии: 296-ФЗ от 02.07.2021 (актуализация 2025)
-`;
-  }
-  
-  /**
-   * Рекомендации по снижению выбросов
-   */
-  generateRecommendations(result: EmissionResult): string[] {
-    const recommendations: string[] = [];
-    
-    // Анализ структуры выбросов и предложение мер
-    const maxSource = Object.entries(result.breakdown)
-      .reduce((max, [key, value]) => value > max.value ? { key, value } : max, 
-              { key: '', value: 0 });
-    
-    switch (maxSource.key) {
-      case 'electricity':
-        recommendations.push(
-          '🔋 Внедрить энергосберегающие технологии и LED-освещение',
-          '☀️ Рассмотреть установку солнечных панелей',
-          '⚡ Оптимизировать график работы энергоемкого оборудования'
-        );
-        break;
-      case 'naturalGas':
-        recommendations.push(
-          '🏠 Улучшить теплоизоляцию зданий',
-          '🌡️ Установить программируемые термостаты',
-          '🔧 Провести техобслуживание газового оборудования'
-        );
-        break;
-      case 'transport':
-        recommendations.push(
-          '🚗 Перейти на электротранспорт или гибриды',
-          '🚌 Оптимизировать логистические маршруты',
-          '💻 Развивать удаленную работу для сокращения поездок'
-        );
-        break;
-    }
-    
-    // Общие рекомендации
-    recommendations.push(
-      '📊 Внедрить систему мониторинга выбросов',
-      '🌱 Рассмотреть участие в углеродных проектах',
-      '📋 Получить сертификацию по стандартам ISO 14064'
-    );
-    
-    return recommendations;
-  }
-}
-
-// Фабричная функция для создания калькулятора
-export function createEmissionCalculator(customFactors?: Partial<EmissionFactors>): EmissionCalculator {
-  return new EmissionCalculator(customFactors);
-}
-
-// Экспорт констант
-export const RUSSIAN_EMISSION_FACTORS = EMISSION_FACTORS_2025; 
