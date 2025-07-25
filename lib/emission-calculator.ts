@@ -155,4 +155,64 @@ export function generateEmissionData(baseData: any): EmissionData {
     pfc_mass: 0,
     sf6_mass: 0.001 // Минимальные выбросы SF6
   };
+}/**
+
+ * Валидирует корректность расчета общего объема выбросов
+ */
+export function validateEmissionCalculation(result: EmissionResult): {
+  isValid: boolean;
+  calculatedTotal: number;
+  reportedTotal: number;
+  difference: number;
+} {
+  // Парсим значения из строк (русский формат с запятой)
+  const co2e_co2 = parseFloat(result.co2e_co2.replace(',', '.'));
+  const co2e_ch4 = parseFloat(result.co2e_ch4.replace(',', '.'));
+  const co2e_n2o = parseFloat(result.co2e_n2o.replace(',', '.'));
+  const co2e_hfc = parseFloat(result.co2e_hfc.replace(',', '.'));
+  const co2e_pfc = parseFloat(result.co2e_pfc.replace(',', '.'));
+  const co2e_sf6 = parseFloat(result.co2e_sf6.replace(',', '.'));
+  const total_reported = parseFloat(result.total_co2e.replace(',', '.'));
+  
+  // Рассчитываем сумму
+  const calculatedTotal = co2e_co2 + co2e_ch4 + co2e_n2o + co2e_hfc + co2e_pfc + co2e_sf6;
+  const difference = Math.abs(calculatedTotal - total_reported);
+  
+  // Допускаем погрешность в 0.1 тонны CO2-экв
+  const isValid = difference < 0.1;
+  
+  return {
+    isValid,
+    calculatedTotal,
+    reportedTotal: total_reported,
+    difference
+  };
+}
+
+/**
+ * Валидирует корректность процентов (должны в сумме давать 100%)
+ */
+export function validatePercentages(result: EmissionResult): {
+  isValid: boolean;
+  totalPercent: number;
+  difference: number;
+} {
+  const co2_percent = parseFloat(result.co2_percent.replace(',', '.'));
+  const ch4_percent = parseFloat(result.ch4_percent.replace(',', '.'));
+  const n2o_percent = parseFloat(result.n2o_percent.replace(',', '.'));
+  const hfc_percent = parseFloat(result.hfc_percent.replace(',', '.'));
+  const pfc_percent = parseFloat(result.pfc_percent.replace(',', '.'));
+  const sf6_percent = parseFloat(result.sf6_percent.replace(',', '.'));
+  
+  const totalPercent = co2_percent + ch4_percent + n2o_percent + hfc_percent + pfc_percent + sf6_percent;
+  const difference = Math.abs(totalPercent - 100);
+  
+  // Допускаем погрешность в 0.1%
+  const isValid = difference < 0.1;
+  
+  return {
+    isValid,
+    totalPercent,
+    difference
+  };
 }

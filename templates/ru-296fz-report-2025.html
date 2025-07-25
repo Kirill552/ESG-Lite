@@ -161,6 +161,31 @@
             .page-break {
                 page-break-before: always;
             }
+            
+            /* Предотвращение разрыва таблиц */
+            .data-table thead {
+                page-break-inside: avoid;
+                page-break-after: avoid;
+            }
+            
+            .data-table thead tr {
+                page-break-inside: avoid;
+                page-break-after: avoid;
+            }
+            
+            .total-row {
+                page-break-inside: avoid;
+                page-break-before: avoid;
+                page-break-after: avoid;
+            }
+            
+            .signature-section {
+                page-break-inside: avoid;
+            }
+            
+            .methodology-section {
+                page-break-inside: avoid;
+            }
         }
 
         .methodology-section {
@@ -443,12 +468,12 @@
         <h4>МЕТОДОЛОГИЯ РАСЧЕТА</h4>
         <p>
             Расчет выбросов парниковых газов выполнен в соответствии с методическими указаниями, 
-            утвержденными приказом Минприроды России от 15.06.2017 № 371 "Об утверждении методических 
+            утвержденными приказом Минприроды России от 27.05.2022 № 371 "Об утверждении методических 
             указаний и руководства по количественному определению объема выбросов парниковых газов 
             организациями, осуществляющими хозяйственную и иную деятельность в Российской Федерации".
         </p>
         <p style="margin-top: 8px;">
-            <strong>Применяемые коэффициенты эмиссии:</strong> [[emission_factors_source]]<br>
+            <strong>Применяемые коэффициенты эмиссии:</strong> [[emission_factors_source]], Приложение 10, табл. 2<br>
             <strong>Потенциалы глобального потепления:</strong> IPCC AR4 (2007)<br>
             <strong>Отчетный период:</strong> [[reporting_period]]
         </p>

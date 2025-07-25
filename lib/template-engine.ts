@@ -107,6 +107,12 @@ export interface TemplateData {
   generation_date?: string;
   generation_time?: string;
   document_id?: string;
+  
+  // PDF метаданные
+  pdf_title?: string;
+  pdf_subject?: string;
+  pdf_creator?: string;
+  pdf_author?: string;
 }
 
 export interface TemplateValidationError {
@@ -314,10 +320,16 @@ export function create296FZTemplateData(baseData: any): TemplateData {
 
     // Метаданные
     reporting_period: baseData.reportingPeriod || now.getFullYear().toString(),
-    emission_factors_source: 'Приказ Минприроды России от 15.06.2017 № 371',
+    emission_factors_source: 'Приказ Минприроды России от 27.05.2022 № 371',
     generation_date: now.toLocaleDateString('ru-RU'),
     generation_time: now.toLocaleTimeString('ru-RU'),
-    document_id: baseData.documentId || `DOC_${Date.now()}`
+    document_id: baseData.documentId || `DOC_${Date.now()}`,
+    
+    // PDF метаданные
+    pdf_title: `Отчет о выбросах ПГ (296-ФЗ) - ${baseData.fullCompanyName || baseData.companyName || 'Организация'}`,
+    pdf_subject: 'Ru296-707 Report',
+    pdf_creator: 'ESG-Lite 1.0',
+    pdf_author: baseData.signerName || 'Ответственное лицо'
   };
 }
 /**
@@ -402,7 +414,7 @@ export function generateProcessData(baseData: any): any {
     capacity: '1000',
     unit: 'кВт·ч',
     method: 'Инструментальный',
-    coef_src: 'Приказ Минэнерго России',
+    coef_src: 'Приказ Минприроды РФ № 371 от 27.05.2022, Приложение 10, таблица 2',
     justif: 'Косвенные выбросы от потребления электроэнергии'
   });
   
@@ -415,7 +427,7 @@ export function generateProcessData(baseData: any): any {
       capacity: '50,0',
       unit: 'тыс.м³/год',
       method: 'Расчетный',
-      coef_src: 'Приказ Минприроды № 330',
+      coef_src: 'Приказ Минприроды РФ № 371 от 27.05.2022, Приложение 10, таблица 1',
       justif: 'Прямые выбросы от сжигания топлива'
     });
   }
@@ -428,7 +440,7 @@ export function generateProcessData(baseData: any): any {
       capacity: '10000',
       unit: 'км/год',
       method: 'Расчетный',
-      coef_src: 'Приказ Минприроды № 330',
+      coef_src: 'Приказ Минприроды РФ № 371 от 27.05.2022, Приложение 10, таблица 3',
       justif: 'Мобильные источники выбросов'
     });
   }

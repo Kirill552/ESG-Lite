@@ -30,7 +30,7 @@ function createTemplateData(baseData) {
     proc_1_capacity: '1000',
     proc_1_unit: 'кВт·ч',
     proc_1_method: 'Инструментальный',
-    proc_1_coef_src: 'Приказ № 371, табл. 2.1',
+    proc_1_coef_src: 'Приказ Минприроды РФ № 371 от 27.05.2022, Приложение 10, таблица 2',
     proc_1_justif: 'Косвенные выбросы от потребления электроэнергии',
 
     proc_2_code: 'P002',
@@ -39,7 +39,7 @@ function createTemplateData(baseData) {
     proc_2_capacity: '50,0',
     proc_2_unit: 'тыс.м³/год',
     proc_2_method: 'Расчетный',
-    proc_2_coef_src: 'Приказ № 371, табл. 1.3',
+    proc_2_coef_src: 'Приказ Минприроды РФ № 371 от 27.05.2022, Приложение 10, таблица 1',
     proc_2_justif: 'Прямые выбросы от сжигания топлива',
 
     proc_3_code: '',
@@ -51,16 +51,16 @@ function createTemplateData(baseData) {
     proc_3_coef_src: '',
     proc_3_justif: '',
 
-    // Выбросы (рассчитанные для производства)
+    // Выбросы (математически корректные)
     co2_mass: '2001,3',
     co2e_co2: '2001,3',
-    co2_percent: '82,5',
+    co2_percent: '89,3',
     ch4_mass: '1,5',
     co2e_ch4: '37,5',
-    ch4_percent: '1,5',
+    ch4_percent: '1,7',
     n2o_mass: '0,6',
     co2e_n2o: '178,8',
-    n2o_percent: '7,4',
+    n2o_percent: '8,0',
     hfc_mass: '0,0',
     hfc_gwp: '1430',
     co2e_hfc: '0,0',
@@ -71,8 +71,8 @@ function createTemplateData(baseData) {
     pfc_percent: '0,0',
     sf6_mass: '0,001',
     co2e_sf6: '22,8',
-    sf6_percent: '0,9',
-    total_co2e: '2426,1',
+    sf6_percent: '1,0',
+    total_co2e: '2240,4',
 
     // Климатические проекты
     climproj_1_name: '',
@@ -98,7 +98,7 @@ function createTemplateData(baseData) {
 
     // Метаданные
     reporting_period: baseData.reportingPeriod,
-    emission_factors_source: 'Приказ Минприроды России от 15.06.2017 № 371',
+    emission_factors_source: 'Приказ Минприроды России от 27.05.2022 № 371',
     generation_date: now.toLocaleDateString('ru-RU'),
     generation_time: now.toLocaleTimeString('ru-RU'),
     document_id: `DOC_${Date.now()}`
@@ -163,6 +163,44 @@ try {
     unreplacedTokens.forEach(token => console.log(`  - ${token}`));
   } else {
     console.log('✅ Все токены заменены');
+  }
+
+  // Валидация расчетов выбросов
+  console.log('\n🧮 Валидация расчетов:');
+
+  // Проверка суммы выбросов
+  const co2_val = parseFloat(templateData.co2e_co2.replace(',', '.'));
+  const ch4_val = parseFloat(templateData.co2e_ch4.replace(',', '.'));
+  const n2o_val = parseFloat(templateData.co2e_n2o.replace(',', '.'));
+  const hfc_val = parseFloat(templateData.co2e_hfc.replace(',', '.'));
+  const pfc_val = parseFloat(templateData.co2e_pfc.replace(',', '.'));
+  const sf6_val = parseFloat(templateData.co2e_sf6.replace(',', '.'));
+  const total_val = parseFloat(templateData.total_co2e.replace(',', '.'));
+
+  const calculatedSum = co2_val + ch4_val + n2o_val + hfc_val + pfc_val + sf6_val;
+  const difference = Math.abs(calculatedSum - total_val);
+
+  if (difference < 0.1) {
+    console.log(`✅ Сумма выбросов корректна: ${calculatedSum.toFixed(1)} = ${total_val.toFixed(1)} т CO₂-экв`);
+  } else {
+    console.log(`❌ Ошибка в сумме: рассчитано ${calculatedSum.toFixed(1)}, указано ${total_val.toFixed(1)} (разница: ${difference.toFixed(1)})`);
+  }
+
+  // Проверка процентов
+  const co2_pct = parseFloat(templateData.co2_percent.replace(',', '.'));
+  const ch4_pct = parseFloat(templateData.ch4_percent.replace(',', '.'));
+  const n2o_pct = parseFloat(templateData.n2o_percent.replace(',', '.'));
+  const hfc_pct = parseFloat(templateData.hfc_percent.replace(',', '.'));
+  const pfc_pct = parseFloat(templateData.pfc_percent.replace(',', '.'));
+  const sf6_pct = parseFloat(templateData.sf6_percent.replace(',', '.'));
+
+  const totalPercent = co2_pct + ch4_pct + n2o_pct + hfc_pct + pfc_pct + sf6_pct;
+  const pctDifference = Math.abs(totalPercent - 100);
+
+  if (pctDifference < 0.1) {
+    console.log(`✅ Проценты корректны: ${totalPercent.toFixed(1)}% = 100%`);
+  } else {
+    console.log(`❌ Ошибка в процентах: сумма ${totalPercent.toFixed(1)}% (разница: ${pctDifference.toFixed(1)}%)`);
   }
 
   // Сохраняем результат
