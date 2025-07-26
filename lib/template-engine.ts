@@ -64,8 +64,9 @@ export function validate296FZTokens(data: TemplateData): string[] {
   const errors: string[] = [];
   
   requiredTokens.forEach(token => {
-    if (!data[token] || String(data[token]).trim() === '') {
-      errors.push(`Отсутствует обязательный токен: ${token}`);
+    const value = String(data[token] || '').trim();
+    if (!value || value === 'Не указано') {
+      errors.push(`Отсутствует обязательный токен: ${token} (значение: "${value}")`);
     }
   });
   
