@@ -1,0 +1,38 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./",
+    "module": "commonjs",
+    "target": "es2020",
+    "lib": ["es2020"],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "allowJs": false,
+    "noEmit": false,
+    "incremental": true,
+    "sourceMap": true,
+    "declaration": false,
+    "isolatedModules": false,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "paths": {
+      "@/*": ["./app/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/components/*": ["./components/*"]
+    }
+  },
+  "include": [
+    "workers/**/*",
+    "lib/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "app",
+    "components"
+  ]
+}
