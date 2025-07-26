@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { processS3File } from '@/lib/ocr';
-import { prisma } from '@/lib/prisma';
+import { auth } from '@clerk/nextjs';
+import { queueManager } from '@/lib/queue/queue-manager';
+import { QUEUE_NAMES, JobPriority } from '@/lib/queue/types';
+import { rateLimiter, RATE_LIMITS } from '@/lib/queue/rate-limiter';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const { userId, orgId } = auth();
+
+    if (!userId || !orgId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -16,117 +18,83 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { documentId } = body;
+    const { fileKey, documentType } = body;
 
-    if (!documentId) {
+    if (!fileKey || !documentType) {
       return NextResponse.json(
-        { error: 'documentId is required' },
+        { error: 'Missing required fields: fileKey, documentType' },
         { status: 400 }
       );
     }
 
-    console.log('🔍 OCR POST request received:', { documentId, userId });
-
-    // Находим документ в БД
-    const document = await prisma.document.findFirst({
-      where: {
-        id: documentId,
-        user: { clerkId: userId }
-      },
-      include: {
-        user: true
-      }
+    // Проверяем rate limit для организации
+    const rateLimitResult = await rateLimiter.checkLimit({
+      key: `${RATE_LIMITS.OCR_PER_ORG.keyPrefix}${orgId}`,
+      limit: RATE_LIMITS.OCR_PER_ORG.limit,
+      window: RATE_LIMITS.OCR_PER_ORG.window,
     });
-    
-    if (!document) {
-      return NextResponse.json({
-        success: false,
-        error: 'Document not found'
-      }, { status: 404 });
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `Превышен лимит: ${RATE_LIMITS.OCR_PER_ORG.limit} OCR задач за ${RATE_LIMITS.OCR_PER_ORG.window} секунд`,
+          remaining: rateLimitResult.remaining,
+          resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+        },
+        { status: 429 }
+      );
     }
 
-    console.log('🔍 Найден документ для OCR:', { documentId, fileName: document.fileName });
-
-    try {
-      // Обновляем статус документа
-      await prisma.document.update({
-        where: { id: documentId },
-        data: { 
-          status: 'PROCESSING',
-          ocrProcessed: false
-        }
-      });
-
-      // filePath уже содержит fileKey
-      const fileKey = document.filePath;
-      console.log('🚀 Запускаем OCR обработку для файла:', fileKey);
-       
-      const text = await processS3File(fileKey);
-      
-      console.log('✅ OCR обработка завершена успешно. Длина текста:', text.length);
-      console.log('📄 Первые 100 символов:', text.substring(0, 100));
-      
-      // Сохраняем результат в БД
-      await prisma.document.update({
-        where: { id: documentId },
-        data: {
-          status: 'PROCESSED',
-          ocrProcessed: true,
-          ocrData: {
-            fullText: text,
-            textPreview: text.substring(0, 200),
-            textLength: text.length,
-            processedAt: new Date().toISOString()
-          },
-          ocrConfidence: 0.95 // Примерная точность
-        }
-      });
-      
-      console.log('💾 OCR результат сохранен в БД');
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          documentId,
-          preview: text.substring(0, 200),
-          textLength: text.length,
-          processedAt: new Date().toISOString()
-        }
-      });
-
-    } catch (ocrError: any) {
-      console.error('❌ OCR обработка неудачна:', ocrError.message);
-      
-      // Сохраняем ошибку в БД
-      await prisma.document.update({
-        where: { id: documentId },
-        data: {
-          status: 'FAILED',
-          ocrData: {
-            error: ocrError.message,
-            processedAt: new Date().toISOString()
-          }
-        }
-      });
-
-      return NextResponse.json({
-        success: false,
-        error: ocrError.message
-      }, { status: 500 });
+    // Получаем очередь OCR
+    const ocrQueue = queueManager.getQueue(QUEUE_NAMES.OCR);
+    if (!ocrQueue) {
+      return NextResponse.json(
+        { error: 'OCR queue not available' },
+        { status: 503 }
+      );
     }
 
-  } catch (error: any) {
-    console.error('❌ OCR API error:', error);
+    // Добавляем задачу в очередь
+    const job = await ocrQueue.add(
+      'ocr-process',
+      {
+        fileKey,
+        userId,
+        orgId,
+        documentType,
+      },
+      {
+        priority: JobPriority.NORMAL,
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+      }
+    );
+
     return NextResponse.json({
-      success: false,
-      error: 'Internal Server Error'
-    }, { status: 500 });
+      success: true,
+      jobId: job.id,
+      status: 'queued',
+      rateLimit: {
+        remaining: rateLimitResult.remaining,
+        resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error adding OCR job:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId } = auth();
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
